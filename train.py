@@ -1,16 +1,6 @@
-from calendar import EPOCH
 from typing import Tuple, List
 import numpy as np
-import torch
-from main import load_file, score
 
-from __future__ import unicode_literals, print_function, division
-from io import open
-import unicodedata
-import string
-import re
-import random
-import math
 import tqdm
 import time
 
@@ -126,6 +116,21 @@ def train_val(model, device, train_loader, val_loader, n_epochs, loss_fn, tokeni
 
 def main():
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    functions, true_derivatives = load_file("train.txt")
+
+    total_len = len(functions)
+    indices = list(range(total_len))
+    random.seed(42)
+    random.shuffle(indices)
+    train_size = math.floor(total_len * 0.8)
+    idx_train = indices[: train_size]
+    idx_val = indices[train_size:]
+
+    traindata = [functions[i] for i in idx_train]
+    trainlabel = [true_derivatives[i] for i in idx_train]
+    valdata = [functions[i] for i in idx_val]
+    vallabel = [true_derivatives[i] for i in idx_val]
 
     # experiment config
     loss_fn = nn.CrossEntropyLoss()

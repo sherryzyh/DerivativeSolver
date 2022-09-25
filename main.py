@@ -10,20 +10,12 @@ import re
 import random
 from tqdm import tqdm
 
-import torch
-import torch.nn as nn
-from torch import optim
-import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
+# My Classes
+from model import *
+from dataset import *
+from tokenizer import *
+from config import *
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-MAX_SEQUENCE_LENGTH = 30
-TRAIN_URL = "https://drive.google.com/file/d/1ND_nNV5Lh2_rf3xcHbvwkKLbY2DmOH09/view?usp=sharing"
-
-PAD_TOKEN_IDX = 0
-SOS_TOKEN_IDX = 1
-EOS_TOKEN_IDX = 2
 
 def load_file(file_path: str) -> Tuple[Tuple[str], Tuple[str]]:
     """loads the test file and extracts all functions/derivatives"""
@@ -36,20 +28,6 @@ def score(true_derivative: str, predicted_derivative: str) -> int:
     """binary scoring function for model evaluation"""
     return int(true_derivative == predicted_derivative)
 
-functions, true_derivatives = load_file("train.txt")
-
-total_len = len(functions)
-indices = list(range(total_len))
-random.seed(42)
-random.shuffle(indices)
-train_size = math.floor(total_len * 0.8)
-idx_train = indices[: train_size]
-idx_val = indices[train_size:]
-
-traindata = [functions[i] for i in idx_train]
-trainlabel = [true_derivatives[i] for i in idx_train]
-valdata = [functions[i] for i in idx_val]
-vallabel = [true_derivatives[i] for i in idx_val]
 
 
 def load_file(file_path: str) -> Tuple[Tuple[str], Tuple[str]]:
@@ -65,8 +43,21 @@ def score(true_derivative: str, predicted_derivative: str) -> int:
 
 
 # --------- PLEASE FILL THIS IN --------- #
-def predict(functions: str):
-    return functions
+def predict(model, tokenizer, functions: str):
+    tokenized_function = np.array([tokenizer.tokenize(ch) for ch in functions] + [EOS_TOKEN_IDX])
+    encoder_input = [torch.from_numpy(tokenized_function)]
+    encoder_input = nn.utils.rnn.pad_sequence(encoder_input, batch_first=True, padding_value=PAD_TOKEN_IDX)
+    encoder_input = encoder_input.to(DEVICE)
+
+    pred_logits = model(encoder_input, None, "test")
+    prediction = torch.argmax(pred_logits, dim=-1)
+
+    for i in range(MAX_SEQUENCE_LENGTH + 1):
+        if i < MAX_SEQUENCE_LENGTH and prediction[0][i].item() == EOS_TOKEN_IDX:
+            break
+    pred_derivative = "".join([tokenizer.detokenize(idx) for idx in prediction[0][:i].cpu().tolist()])
+    
+    return pred_derivative
 
 
 # ----------------- END ----------------- #
@@ -75,11 +66,22 @@ def predict(functions: str):
 def main(filepath: str = "test.txt"):
     """load, inference, and evaluate"""
     functions, true_derivatives = load_file("train.txt")
-    print(set(functions))
+    global DEVICE
+    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # predicted_derivatives = [predict(f) for f in functions]
-    # scores = [score(td, pd) for td, pd in zip(true_derivatives, predicted_derivatives)]
-    # print(np.mean(scores))
+    functions = functions[:10000]
+    true_derivatives = true_derivatives[:10000]
+    # print(set(functions))
+
+    tokenizer = DerivativeTokenizer()
+    model = Seq2Seq(tokenizer.vocab_size(), EMBEDDING_SIZE, ENCODER_HIDDEN_SIZE, DECODER_HIDDEN_SIZE)
+    model.load_state_dict(torch.load("best_derivative.pt"))
+    model = model.to(DEVICE)
+    model.eval()
+
+    predicted_derivatives = [predict(model, tokenizer, f) for f in functions]
+    scores = [score(td, pd) for td, pd in zip(true_derivatives, predicted_derivatives)]
+    print(np.mean(scores))
 
 
 if __name__ == "__main__":
