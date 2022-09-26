@@ -1,3 +1,8 @@
 train.txt
 best_derivative.pt
 __pycache__
+
+tokenize_ch/
+tokenize_seq/
+checkpoints/
+*.pt

@@ -57,9 +57,9 @@ class DerivativeDecoder(nn.Module):
 
     def forward(self, decoder_input, encoder_outputs, encoder_hidden):
         output = self.embedding(decoder_input)
-        output, hidden = self.lstm(output, encoder_hidden)
+        output, last_hidden = self.lstm(output, encoder_hidden)
         output = self.linear(output)
-        return output
+        return output, last_hidden
 
 class Seq2Seq(nn.Module):
     def __init__(self, vocab_size, emb_size=128, encoder_hidden_dim=256, decoder_hidden_dim=256):
@@ -75,12 +75,15 @@ class Seq2Seq(nn.Module):
         else:
           batch_max_seq_len = MAX_SEQUENCE_LENGTH + 1
 
+        # print(f"gt_decoder_input: {gt_decoder_input}")
+        # print(f"mode: {mode}")
+
         encoder_output, encoder_hidden = self.encoder(encoder_input) # (batchsize, seq_len, hidden_size)
         decoder_input = torch.LongTensor([[SOS_TOKEN_IDX] for _ in range(batchsize)]).to(encoder_input.device)
         decoder_output = torch.empty((batchsize, 1, self.vocab_size), dtype=torch.int64).to(encoder_input.device)
 
         for i in range(batch_max_seq_len):
-            pred_logits = self.decoder(decoder_input, encoder_output, encoder_hidden) # (batchsize, seq_len(decoder_input_len), vocab_size)
+            pred_logits, _ = self.decoder(decoder_input, encoder_output, encoder_hidden) # (batchsize, seq_len(decoder_input_len), vocab_size)
             pred = torch.argmax(pred_logits[:, -1, :], dim=1) # (batchsize)
 
             decoder_output = torch.cat([decoder_output, pred_logits[:, -1, :].view(batchsize, 1, self.vocab_size)], axis=1)
@@ -88,8 +91,10 @@ class Seq2Seq(nn.Module):
               break
 
             if random.random() <= 0.2 and mode == "train": # use teacher forcing
+              # print(f"decoder_input concat gt label")
               decoder_input = torch.cat([decoder_input, gt_decoder_input[:, i + 1].view(batchsize, 1)], axis=1)
             else: # in "test" or not use teacher forcing
+              # print(f"decoder_input concat prev pred")
               decoder_input = torch.cat([decoder_input, pred.view(batchsize, 1)], axis=1)
 
         return decoder_output[:, 1:]

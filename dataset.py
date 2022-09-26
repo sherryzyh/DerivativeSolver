@@ -25,15 +25,18 @@ class DerivativeDataset(Dataset):
 
     def __getitem__(self, index):
         function = self.input[index]
+        # tokenized_function = np.array(self.tokenizer.tokenize_seq(function) + [EOS_TOKEN_IDX])
         tokenized_function = np.array([self.tokenizer.tokenize(ch) for ch in function] + [EOS_TOKEN_IDX])
         derivative = self.target[index]
         
         if self.isTrain:
-          tokenized_decoder_input = np.array([SOS_TOKEN_IDX] + self.tokenizer.tokenize_seq(derivative))
-          tokenized_target = np.array(self.tokenizer.tokenize_seq(derivative) + [EOS_TOKEN_IDX])
-          return (tokenized_function, tokenized_decoder_input, tokenized_target)
+            #   tokenized_decoder_input = np.array([SOS_TOKEN_IDX] + self.tokenizer.tokenize_seq(derivative))
+            #   tokenized_target = np.array(self.tokenizer.tokenize_seq(derivative) + [EOS_TOKEN_IDX])
+            tokenized_decoder_input = np.array([SOS_TOKEN_IDX] + [self.tokenizer.tokenize(ch) for ch in derivative])
+            tokenized_target = np.array([self.tokenizer.tokenize(ch) for ch in derivative] + [EOS_TOKEN_IDX])
+            return (tokenized_function, tokenized_decoder_input, tokenized_target)
         else:
-          return (tokenized_function, derivative)
+            return (tokenized_function, function, derivative)
       
     def collate_fn_train(self, batch: List[Tuple]):
         batch_input = [torch.from_numpy(input) for input, decoder_input, label in batch]
@@ -45,7 +48,8 @@ class DerivativeDataset(Dataset):
         return batch_input, batch_decoder_input, batch_label
     
     def collate_fn_val(self, batch):
-        batch_input = [torch.from_numpy(input) for input, true_derivatives in batch]
-        batch_true_derivatives = [true_derivatives for input, true_derivatives in batch]
+        batch_input = [torch.from_numpy(input) for input, function,  true_derivatives in batch]
+        batch_functions = [function for input, function, true_derivatives in batch]
+        batch_true_derivatives = [true_derivatives for input, function, true_derivatives in batch]
         batch_input = nn.utils.rnn.pad_sequence(batch_input, batch_first=True, padding_value=PAD_TOKEN_IDX)
-        return batch_input, batch_true_derivatives
+        return batch_input, batch_functions, batch_true_derivatives
