@@ -1,0 +1,17 @@
+Local test score on whole training data:
+    0.96292
+
+
+Local test score on a portion of training data:
+    0.9644
+    
+    setting:
+        total_len = len(functions)
+        indices = list(range(total_len))
+        random.seed(26)
+        random.shuffle(indices)
+        test_size = 10000
+        test_idx = indices[: test_size]
+
+        functions = [functions[i] for i in test_idx]
+        true_derivatives = [true_derivatives[i] for i in test_idx]

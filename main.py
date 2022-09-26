@@ -9,6 +9,7 @@ import string
 import re
 import random
 from tqdm import tqdm
+from torchsummary import summary
 
 # My Classes
 from model import *
@@ -52,11 +53,9 @@ def predict(model, device, tokenizer, f: str):
     encoder_input = [torch.from_numpy(tokenized_function)]
     encoder_input = nn.utils.rnn.pad_sequence(encoder_input, batch_first=True, padding_value=PAD_TOKEN_IDX)
     encoder_input = encoder_input.to(device)
-    # print(f"test encoder input: {encoder_input}")
 
     pred_logits = model(encoder_input, None, "test")
     prediction = torch.argmax(pred_logits, dim=-1)
-    # print(f"test prediction: {prediction}")
     
     prediction = prediction.cpu().tolist()
     for i in range(MAX_SEQUENCE_LENGTH + 1):
@@ -66,40 +65,60 @@ def predict(model, device, tokenizer, f: str):
 
     return pred_derivative
 
+def printsummary(model):
+    net = model.cpu()
+    modules = [module for module in net.modules()]
+    total_params=0
+    for i in range(1,len(modules)):
+        if len(list(modules[i].children())) > 0:
+            print("=" * 100)
+            print(f"{modules[i]}")
+            print("- "* 50)
+            continue
+        # print(modules[i])
+        mod = modules[i]
+        modname = f"{mod}"
+        module_params = np.sum([np.size(param.detach().numpy()) for param in mod.parameters()])
+        space_len = 95 - len(modname) - len(str(module_params))
+        print(" " * 5 + f"{modname}" + " " * space_len + f"{module_params}")
+        
+        total_params += module_params
+    print("=" * 100)
+    print(f"Total Params: {total_params/1000000:.2f} M")
 
+    return
 # ----------------- END ----------------- #
 
 
 def main(filepath: str = "test.txt"):
     """load, inference, and evaluate"""
-    functions, true_derivatives = load_file("train.txt")
+    functions, true_derivatives = load_file("test.txt")
     global DEVICE
-    DEVICE = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-    total_len = len(functions)
-    indices = list(range(total_len))
-    random.seed(52)
-    random.shuffle(indices)
-    # test_size = math.floor(total_len * 0.02)
-    test_size = 5000
-    test_idx = indices[: test_size]
+    # ############### local test on subset ##############################################
+    # total_len = len(functions)
+    # indices = list(range(total_len))
+    # random.seed(26)
+    # random.shuffle(indices)
+    # test_size = 10000
+    # test_idx = indices[: test_size]
 
-    functions = [functions[i] for i in test_idx]
-    true_derivatives = [true_derivatives[i] for i in test_idx]
-    # print(set(functions))
-    print(f"Total data sample: {len(functions)}")
+    # functions = [functions[i] for i in test_idx]
+    # true_derivatives = [true_derivatives[i] for i in test_idx]
+    # ####################################################################################
 
     tokenizer = DerivativeTokenizer()
     model = Seq2Seq(tokenizer.vocab_size(), EMBEDDING_SIZE, ENCODER_HIDDEN_SIZE, DECODER_HIDDEN_SIZE)
-    model.load_state_dict(torch.load("./checkpoints/best.pt"))
+    model.load_state_dict(torch.load("yinghuan_best.pt"))
+    # printsummary(model)
+
     model = model.to(DEVICE)
     model.eval()
 
+
     predicted_derivatives = [predict(model, DEVICE, tokenizer, f) for f in functions]
-    # for td, pd in zip(true_derivatives, predicted_derivatives):
-    #     if score(td, pd) < 1:
-    #         print(f"true: {td} | pred: {pd}")
     scores = [score(td, pd) for td, pd in zip(true_derivatives, predicted_derivatives)]
     print(np.mean(scores))
 
