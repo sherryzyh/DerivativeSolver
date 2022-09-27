@@ -91,22 +91,22 @@ def printsummary(model):
 
 def main(filepath: str = "test.txt"):
     """load, inference, and evaluate"""
-    functions, true_derivatives = load_file("train.txt")
+    functions, true_derivatives = load_file("test.txt")
     global DEVICE
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-    ############### local test on subset ##############################################
-    total_len = len(functions)
-    indices = list(range(total_len))
-    random.seed(26)
-    random.shuffle(indices)
-    test_size = 10000
-    test_idx = indices[: test_size]
+    # ############### local test on subset ##############################################
+    # total_len = len(functions)
+    # indices = list(range(total_len))
+    # random.seed(26)
+    # random.shuffle(indices)
+    # test_size = 10000
+    # test_idx = indices[: test_size]
 
-    functions = [functions[i] for i in test_idx]
-    true_derivatives = [true_derivatives[i] for i in test_idx]
-    ####################################################################################
+    # functions = [functions[i] for i in test_idx]
+    # true_derivatives = [true_derivatives[i] for i in test_idx]
+    # ####################################################################################
 
     tokenizer = DerivativeTokenizer()
     model = Seq2Seq(tokenizer.vocab_size(), EMBEDDING_SIZE, ENCODER_HIDDEN_SIZE, DECODER_HIDDEN_SIZE)
