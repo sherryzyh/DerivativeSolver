@@ -1,5 +1,5 @@
 Local test score on whole training data:
-    0.96292
+    0.98446
 
 
 Local test score on a portion of training data:

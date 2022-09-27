@@ -1,0 +1,14 @@
+I implement a character-level seq2seq model.
+
+My tokenizer build a vocab list with <SOS> <EOS> <PAD> tokens, number 0~9, letter a~z, and "+" "-" "*" "/" "^". Initially, I tried to tokenize the "cos" "sin" "exp" into specific mathematical tokens, but it didn't work as well as the character-level tokenizer.
+
+
+My model is an LSTM-based seq2seq model.
+
+I use a bidirectional LSTM for an encoder, because the bidirectional LSTM can catch the information through two directions.
+
+I use a unidirectional LSTM for a decoder, because when predicting, we can only predict from the beginning side, so the bidirectional design won't help a lot. I use a deeper network in the decoding part since the decoding is harder than the encoding part.
+
+In the decoder, I set a probability of 0.2 for teacher forcing. Say L is the maximum sequence length, for each i in range(L), in training, I select the ground truth decoder input with the probability 0.2 or the previous predicted with the probability 0.8. In predicting, I select always the previous predicted token to concat. 
+
+In the training, I use the rnn.pad_sequence method in torch to pad the batch input sequences. This method pads the sequence to the in-batch maximum length. My model is trained with batch size 1024. By experiment, I found that such a big batch size will result in the input always being padded to MAX_SEQ_LEN. Therefore, in the prediction, I pad the single input sequence into MAX_SEQ_LEN too.

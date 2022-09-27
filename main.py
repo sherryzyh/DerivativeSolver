@@ -9,7 +9,6 @@ import string
 import re
 import random
 from tqdm import tqdm
-from torchsummary import summary
 
 # My Classes
 from model import *

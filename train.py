@@ -54,10 +54,9 @@ def train_one_epoch(model, device, train_loader, loss_fn, optimizer, tokenizer):
     return avg_loss, losses
 
 
-def evaluate(model, device, val_loader, tokenizer, loss_fn):
+def evaluate(model, device, val_loader, tokenizer):
     num_batches = len(val_loader)
     correct_eval = 0.0
-    correct_test = 0.0
     count = 0.0
     model.eval()
     with torch.no_grad():
@@ -70,20 +69,14 @@ def evaluate(model, device, val_loader, tokenizer, loss_fn):
                 for i in range(MAX_SEQUENCE_LENGTH + 1):
                   if i < MAX_SEQUENCE_LENGTH and prediction[j][i].item() == EOS_TOKEN_IDX:
                     break
-                # pred_derivative = predict(model, device, tokenizer, functions[j])
                 eval_derivative = "".join([tokenizer.detokenize(idx) for idx in prediction[j][:i].cpu().tolist()])
                 
                 correct_eval += score(true_derivative[j], eval_derivative)
-                # correct_test += score(true_derivative[j], pred_derivative)
             count += batchsize
-            # print(f"\nbatch {i}, correct {correct}, count {count}")
         
     
     acc_eval = correct_eval / count
-    # acc_test = correct_test / count
-    # print(f"\ntest acc: {acc_test:.5f} | correct {correct_test}, count {count}")
     print(f"\neval acc: {acc_eval:.5f} | correct {correct_eval}, count {count}")
-    print(f"batchsize {batchsize}")
     return acc_eval
 
 
@@ -100,7 +93,7 @@ def train_val(model, device, train_loader, val_loader, n_epochs, loss_fn, tokeni
         # print(f"\nTraining losses: {train_losses}")
 
         print("Testing Epoch {} ... " .format(epoch))
-        val_acc = evaluate(model, device, val_loader, tokenizer, loss_fn)
+        val_acc = evaluate(model, device, val_loader, tokenizer)
         exp_record["val_acc"].append(val_acc)
 
         print("Epoch: {}, Avg train loss = {}, time = {:.2f} min, Val acc = {}, time = {:.2f} min"\
@@ -112,7 +105,7 @@ def train_val(model, device, train_loader, val_loader, n_epochs, loss_fn, tokeni
             torch.save(model.state_dict(), f"./checkpoints/best.pt")
 
 def main():
-    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     functions, true_derivatives = load_file("train.txt")
     print(f"MAX INPUT: {max(map(len, functions))}")
@@ -149,14 +142,14 @@ def main():
     # Start training
     exp_record = {"train_losses": [], "val_acc": []}
 
-    # train_val(model, DEVICE, train_loader, val_loader, EPOCHES, loss_fn, tokenizer, optimizer, exp_record)
-    # print(f"EXP RECORD: {exp_record['val_acc']}")
+    train_val(model, DEVICE, train_loader, val_loader, EPOCHES, loss_fn, tokenizer, optimizer, exp_record)
+    print(f"EXP RECORD: {exp_record['val_acc']}")
 
-    model.load_state_dict(torch.load("./checkpoints/best.pt"))
-    model = model.to(DEVICE)
-    wholeset = DerivativeDataset(functions, true_derivatives, tokenizer, isTrain=False)
-    dataloader = DataLoader(wholeset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, collate_fn=wholeset.collate_fn_val)
-    test_acc = evaluate(model, DEVICE, dataloader, tokenizer, loss_fn)
+    # model.load_state_dict(torch.load("best.pt"))
+    # model = model.to(DEVICE)
+    # wholeset = DerivativeDataset(functions, true_derivatives, tokenizer, isTrain=False)
+    # dataloader = DataLoader(wholeset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, collate_fn=wholeset.collate_fn_val)
+    # test_acc = evaluate(model, DEVICE, dataloader, tokenizer)
 
 
 
