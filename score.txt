@@ -3,7 +3,7 @@ Local test score on whole training data:
 
 
 Local test score on a portion of training data:
-    0.9644
+    0.9828
     
     setting:
         total_len = len(functions)
